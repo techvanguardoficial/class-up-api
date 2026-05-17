@@ -90,6 +90,9 @@ Route::prefix('v1')->group(function () {
         // Classes endpoint (no subscription required - users need to see their dependents' classes)
         Route::apiResource('classes', ClassSessionController::class);
 
+        // Guardian subscriptions endpoint (no subscription required - users need to see their payment plans)
+        Route::get('guardians/subscriptions', [GuardianController::class, 'subscriptions'])->name('guardians.subscriptions');
+
         // All protected routes that require active subscription
         Route::middleware('validate.subscription')->group(function () {
             Route::apiResource('certificate-templates', CertificateTemplateController::class);

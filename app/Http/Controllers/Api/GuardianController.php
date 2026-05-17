@@ -48,4 +48,43 @@ class GuardianController extends Controller
         $guardian->delete();
         return response()->json(null, 204);
     }
+
+    public function subscriptions(Request $request)
+    {
+        $user = $request->user();
+        $guardian = Guardian::where('user_id', $user->id)->first();
+
+        if (!$guardian) {
+            return response()->json(['message' => 'Responsável não encontrado.'], 404);
+        }
+
+        $students = $guardian->students()->with('studentPaymentPlans.schoolPaymentPlan')->get();
+
+        $subscriptions = [];
+        $totalPrice = 0;
+
+        foreach ($students as $student) {
+            foreach ($student->studentPaymentPlans as $paymentPlan) {
+                $subscriptions[] = [
+                    'student_id' => $student->id,
+                    'student_name' => $student->name,
+                    'payment_plan_id' => $paymentPlan->id,
+                    'plan_name' => $paymentPlan->schoolPaymentPlan->name,
+                    'plan_description' => $paymentPlan->schoolPaymentPlan->description,
+                    'price' => $paymentPlan->schoolPaymentPlan->price,
+                    'due_day' => $paymentPlan->getDueDay(),
+                    'start_date' => $paymentPlan->start_date,
+                    'end_date' => $paymentPlan->end_date,
+                    'active' => $paymentPlan->active,
+                ];
+                $totalPrice += $paymentPlan->schoolPaymentPlan->price;
+            }
+        }
+
+        return response()->json([
+            'subscriptions' => $subscriptions,
+            'total_price' => $totalPrice,
+            'count' => count($subscriptions),
+        ]);
+    }
 }

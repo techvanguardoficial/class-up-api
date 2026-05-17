@@ -12,7 +12,10 @@
       "Read(//tmp/**)",
       "Bash(python3:*)",
       "Read(///wsl.localhost/Ubuntu-24.04/home/masterdba6/**)",
-      "Read(//c/Users/Robson/**)"
+      "Read(//c/Users/Robson/**)",
+      "Bash(composer require:*)",
+      "Bash(php -r \"echo 'PHP version: ' . phpversion\\(\\);\")",
+      "Bash(ls -la config/broadcast*)"
     ]
   }
 }

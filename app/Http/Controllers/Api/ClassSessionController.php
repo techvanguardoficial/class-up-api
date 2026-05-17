@@ -12,7 +12,7 @@ class ClassSessionController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $query = ClassSession::with('instructor');
+        $query = ClassSession::with('instructor', 'classroom');
 
         // Filter by school
         $query->where('school_id', $user->school_id);

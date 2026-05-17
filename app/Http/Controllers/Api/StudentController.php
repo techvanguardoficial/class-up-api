@@ -14,19 +14,27 @@ class StudentController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+        $role = $user->role;
 
-        if (!$user->school_id) {
-            return response()->json(['message' => 'Usuário não está vinculado a nenhuma escola.'], 403);
+        if ($role === 'admin') {
+            if (!$user->school_id) {
+                return response()->json(['message' => 'Usuário não está vinculado a nenhuma escola.'], 403);
+            }
+
+            $query = Student::where('school_id', $user->school_id);
+        } else {
+            $query = Student::where('user_id', $user->id);
         }
 
-        $query = Student::where('school_id', $user->school_id);
-
-        // Filter by user_id if provided
+        // Filter by user_id if provided (only admins can filter by other users)
         if ($request->has('user_id')) {
+            if ($role !== 'admin' && $request->user_id != $user->id) {
+                return response()->json(['message' => 'Acesso negado.'], 403);
+            }
             $query->where('user_id', $request->user_id);
         }
 
-        $students = $query->paginate($request->per_page ?? 15);
+        $students = $query->with('guardians')->paginate($request->per_page ?? 15);
         return response()->json($students);
     }
 
@@ -63,14 +71,14 @@ class StudentController extends Controller
 
             // 2. Create or get Guardian for the authenticated user
             $guardian = Guardian::firstOrCreate(
-            [
-                'user_id' => $user->id,
-                'school_id' => $user->school_id,
-            ],
-            [
-                'name' => $user->name . ' ' . $user->last_name,
-                'phone' => $user->phone ?? null,
-            ]
+                [
+                    'user_id' => $user->id,
+                    'school_id' => $user->school_id,
+                ],
+                [
+                    'name' => $user->name . ' ' . $user->last_name,
+                    'phone' => $user->phone ?? null,
+                ]
             );
 
             // 3. Link Guardian to Student
@@ -94,9 +102,16 @@ class StudentController extends Controller
             if ($user->school_id !== $student->school_id) {
                 return response()->json(['message' => 'Acesso negado.'], 403);
             }
-            return response()->json($student->load('guardians'));
-        }
-        else {
+            return response()->json($student->load(
+                'user',
+                'guardians',
+                'studentPaymentPlans.schoolPaymentPlan',
+                'payments',
+                'attendances',
+                'enrollments.classroom.classSessions.instructor',
+                'enrollments.grades'
+            ));
+        } else {
             // Check if user is guardian of this student or if user is the student
             $isGuardian = $student->guardians()->where('user_id', $user->id)->exists();
             $isStudent = $student->user_id === $user->id;
@@ -105,7 +120,15 @@ class StudentController extends Controller
                 return response()->json(['message' => 'Acesso negado.'], 403);
             }
 
-            return response()->json($student->load('guardians'));
+            return response()->json($student->load(
+                'user',
+                'guardians',
+                'studentPaymentPlans.schoolPaymentPlan',
+                'payments',
+                'attendances',
+                'enrollments.classroom.classSessions.instructor',
+                'enrollments.grades'
+            ));
         }
     }
 
